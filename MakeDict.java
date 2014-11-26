@@ -1,3 +1,5 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
@@ -47,11 +49,16 @@ import java.util.*;
 
 
 public class MakeDict {
+	private static final Short MIN_FREQ = 35;	//anything seen less than 5 times over the last week is likely not that interesting
+	private static final int MAX_LINK = 1400;	//anything with more than 200 links is likely a table or category
+	private static final Integer MAX_REF = 14000;	//anything reference by more than 4000 pages is likely noise
+	
 	static int	counter = 0;
 	static int  known = 0;
 	static ObjectInputStream input;
 	static ArrayList<String> dictionary = new ArrayList<String>();
-	static ArrayList<Float> frequency = null; 
+	static ArrayList<Short> frequency = null; 
+	static ArrayList<Integer> refcount = null;
 
 	static	Links[] map;
 	static String path = "/media/benoit/09d1f277-6968-4ef1-9018-453bdfde4ce2/";
@@ -71,7 +78,7 @@ public class MakeDict {
 			FileInputStream fin = new FileInputStream(path + "dictionary.ser");
 			ObjectInputStream ios = new ObjectInputStream(fin); 
 			dictionary = (ArrayList<String>) ios.readObject();
-			frequency = (ArrayList<Float>) ios.readObject();
+			frequency = (ArrayList<Short>) ios.readObject();
 			fin.close();
 			ios.close();
 		}
@@ -83,7 +90,7 @@ public class MakeDict {
 			
 		
 		FileInputStream fileIn = new FileInputStream(path + "link_database");
-		input = new ObjectInputStream(fileIn);
+		input = new ObjectInputStream(new BufferedInputStream(fileIn, 256*256*256));
 
 		int cnt = 0;
 		
@@ -110,13 +117,31 @@ public class MakeDict {
 	}
 
 
+	private static void CalcRefcount()
+	{
+		refcount = new ArrayList<Integer>();
+		
+		for (int i = 0; i < dictionary.size(); i++) {
+			refcount.add(0);
+		}
+		
+		for (int idx = 0; idx < dictionary.size(); idx++) {
+			if (map[idx].list != null) {
+				ArrayList<Integer> temp = (ArrayList<Integer>)map[idx].list;
+				for (int j = 0; j < temp.size(); j++) {
+					int sub = temp.get(j);
+					refcount.set(sub, refcount.get(sub) + 1);
+				}
+			}
+		}
+	}
 
 
 	private static void CalcPopularity() throws IOException {
-		frequency = new ArrayList<Float>();
+		frequency = new ArrayList<Short>();
 
 		for (int i = 0; i < dictionary.size(); i++) {
-			frequency.add(0.0f);
+			frequency.add((short) 0);
 		}
 		
 		BufferedReader br = new BufferedReader(new FileReader(path + "freq.txt"));
@@ -131,13 +156,16 @@ public class MakeDict {
 				
 				if (start >= 0 && space1 >= 0 && space2 >= 0) {
 					String	name  = line.substring(start + 4, space1);
-					float	count;
+					int	count;
 					
-					count = Float.parseFloat(line.substring(space1 + 1, space2));
+					count = Integer.parseInt(line.substring(space1 + 1, space2));
 					
 					int idx = didx(name);
 					if (idx >= 0) {
-						frequency.set(idx, frequency.get(idx) + count);
+						count = count + frequency.get(idx);
+						if (count > 32000)
+							count = 32000;
+						frequency.set(idx, (short)count);
 					}
 				}
 			
@@ -152,7 +180,7 @@ public class MakeDict {
 		FileInputStream fileIn;
 
 		fileIn = new FileInputStream(path + "link_database");
-		input = new ObjectInputStream(fileIn);
+		input = new ObjectInputStream(new BufferedInputStream(fileIn, 256*256*256));
 
 		map = new Links[dictionary.size()];
 		int	cnt = 0;
@@ -160,12 +188,37 @@ public class MakeDict {
 		while(Domap()) {
 			cnt++;			
 			if (cnt % 10000 == 0) {
-				System.out.print(":");	
+				System.out.println(cnt);	
 			}
 		}
+		CalcRefcount();
+		
 		FileOutputStream of = new FileOutputStream(path + "map.bin");
-		DataOutputStream out = new DataOutputStream(of);
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(of, 256*256*256));
 		out.writeInt(dictionary.size());
+		
+		// cull non reciprocal links and items refered to with more than MAX_REF incoming links
+		
+
+		for (int idx = 0; idx < dictionary.size(); idx++) {
+			ArrayList<Integer> temp = (ArrayList<Integer>)map[idx].list;
+			map[idx].list = new ArrayList<Integer>();
+
+			for (int j = 0; j < temp.size(); j++) {
+				int sub = temp.get(j);
+				if (map[sub] != null) {
+					if (map[sub].list.contains(idx)) {
+						if (refcount.get(sub) < MAX_REF) {	
+							map[idx].addLink(sub);
+						}
+					}
+				}
+			}
+			if (map[idx].list.size() == 0) {
+				map[idx] = null;
+			}
+		}
+		
 		
 		for (int idx = 0; idx < dictionary.size(); idx++) {
 			if (map[idx] != null) {
@@ -181,7 +234,8 @@ public class MakeDict {
 	private static void buildDict() throws IOException {
 		FileInputStream fileIn;
 		fileIn = new FileInputStream(path + "link_database");
-		input = new ObjectInputStream(fileIn);
+		input = new ObjectInputStream(new BufferedInputStream(fileIn, 256*256*256));
+
 
 		int	cnt = 0;
 		while(get()) {
@@ -201,9 +255,9 @@ public class MakeDict {
 		
 		//remove keywords without any read from the frequency list
 		ArrayList<String> dict1 = null;
-		ArrayList<Float> freq1 = null; 
+		ArrayList<Short> freq1 = null; 
 
-		freq1 = (ArrayList<Float>) frequency.clone();
+		freq1 = (ArrayList<Short>) frequency.clone();
 		dict1 = (ArrayList<String>) dictionary.clone();
 		System.out.println("counta " + dictionary.size() + " " + frequency.size());
 
@@ -213,21 +267,25 @@ public class MakeDict {
 		i = 0;
 		
 		while (i < dict1.size()) {
-			// remove entries which have a frequency of zero
-			if (freq1.get(i) > 2) {
-				frequency.add(freq1.get(i));
-				dictionary.add(dict1.get(i));
+			// remove entries which have a frequency of zero or entries with more than 500 links
+			if (freq1.get(i) > MIN_FREQ) {
+					frequency.add(freq1.get(i));
+					dictionary.add(dict1.get(i));
 				//System.out.println(dict1.get(i) + " " + freq1.get(i));
-			}
+				}
+				else {
+					//System.out.println("remove because of frequency " + dict1.get(i));
+				}
+			
 			i++;
-			if ((i%1000) == 0)
+			if ((i%10000) == 0)
 				System.out.print("&");
 		}
 
 		FileOutputStream fout = new FileOutputStream(path + "dictionary.ser");
 		ObjectOutputStream oos = new ObjectOutputStream(fout);
-		oos.writeObject(dict1);
-		oos.writeObject(freq1);
+		oos.writeObject(dictionary);
+		oos.writeObject(frequency);
 		System.out.println("count " + dictionary.size() + " " + dict1.size());
 		oos.close();
 		fileIn.close();
@@ -254,6 +312,7 @@ public class MakeDict {
 
 	private static boolean Domap() {
 		String	name;
+		
 		List<String> list_of_links = new ArrayList<String>();
 
 		try {
@@ -270,16 +329,26 @@ public class MakeDict {
 		index = didx(name);
 
 		if (index >= 0) {
+			if (list_of_links.size() > MAX_LINK) {
+				map[index] = new Links();
+				map[index].setName("");
+				return true;
+			}
+			
 			map[index] = new Links();
 			map[index].setName(name);
+
 
 			for (String s : list_of_links) {
 				int	lnk = didx(s);
 				if (lnk >= 0) {
-					map[index].addLink(lnk);
+					if (frequency.get(lnk) > MIN_FREQ) {
+						map[index].addLink(lnk);
+					}
 				}
 			}
 		}
+		
 		return true;
 	}
 

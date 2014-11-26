@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
@@ -51,6 +52,9 @@ public class Crawl {
 	private static BufferedWriter links;
 	static private FileWriter log;
 	static ObjectOutputStream out;
+	private static int ncnt = 0;
+	
+	
 	static String name_to_dir(String name)
 	{
 		if (name.startsWith("Cat"))
@@ -58,6 +62,18 @@ public class Crawl {
 		else
 			return "cache" + name.hashCode() % 2048;
 	}
+	
+	static boolean exist(String subject)
+	{
+		File file;
+		String path_to_cache = "/media/benoit/09d1f277-6968-4ef1-9018-453bdfde4ce2/cache/";
+
+		String SubDir =  path_to_cache + name_to_dir(subject);
+		file = new File( SubDir  + "/" + subject + ".zip");
+		
+		return file.isFile();
+	}
+	
 	static String get_url(String subject, boolean reload) throws Exception
 	{
 
@@ -72,7 +88,12 @@ public class Crawl {
 			ZipFile reader = new ZipFile(file);
 			InputStream s = reader.getInputStream(reader.entries().nextElement());
 			byte[] chars = new byte[s.available()];
-			s.read(chars, 0, s.available());
+			int pos = 0;
+			
+			while (s.available() > 0) {
+				int cnt = s.read(chars, pos, s.available());
+				pos += cnt;
+			}
 			content = new String(chars);
 			if (!content.startsWith("<!DOCTYPE html>")) {
 				throw(new Exception());
@@ -127,13 +148,15 @@ public class Crawl {
 		
 		} catch (FileNotFoundException e) {
 			System.out.println("no url");
+			throw(e);
 		}
 
 		String str = buf.toString();
 		//System.out.println("write");
 		try {
 			String SubDir = path_to_cache + name_to_dir(subject);
-			System.out.println("new" + " " + SubDir  + "/" + subject + ".zip");
+			ncnt++;
+			System.out.println("new[" + ncnt + "]" + " " + SubDir  + "/" + subject + ".zip");
 			new File(SubDir).mkdir();
 			SubDir = path_to_cache + name_to_dir(subject);
 			ZipOutputStream out = new ZipOutputStream(new FileOutputStream(SubDir  + "/" + subject + ".zip"));
@@ -159,59 +182,108 @@ public class Crawl {
 
 
 
+	private static void dox(final int level, final String str)
+	{
+	
+		Thread t1 = new Thread(new Runnable() {
+		     public void run() {
+		          try {
+		        	Random randomGenerator = new Random();
+					scan(level - randomGenerator.nextInt(11), str);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		     }
+		});  
+		t1.start();
+		
+	}
 
 	private static void loop_scanner(int max_depth) throws Exception {
-			//scan(24, "Special:Statistics");
-			scan(14, "Portal:Current_events");
+		dox(15, "David_Filo");
+		dox(15, "Yahoo");
+		dox(15, "Belgium");
+		dox(15, "Telescope");
+		dox(15, "Tree");
+		dox(15, "Number");
+		dox(15, "Element");
+		dox(15, "Physics");
+		dox(15, "Ocean");
+		dox(15, "Moon");
+		dox(15, "Diagnostic");
+		dox(15, "Car");
+		dox(15, "Wood");
+		dox(15, "Big");
+		dox(15, "Nixon");
+		dox(15, "Base");
+		dox(15, "Rocket");
+		dox(15, "Metal");
+		dox(15, "Asia");
+		scan(22, "Rectangle");
 	}
 
 
 
-	private static void scan(int level, String string) throws Exception {
+	private static void scan(int level, String string) throws Exception {	
 		String markup;
 		known = 0;
 		level--;
 
+		if (currentDict.get(string) != null)
+			return;
 
 		counter++;
-		if (counter % 10000 == 0) {
-			System.out.println("Scan " + string + " " + level);
+		if (counter % 50000 == 0) {
+			System.out.println("Scan " + string + " " + level + " " + counter);
 		}
+
+
+		if (level == 0 && exist(string))
+			return;
+
 		try {
-			markup = get_url(string, false);
+			markup = get_url(string, false/*false*/);
 		} catch (UnsupportedEncodingException e) {
 			System.out.println("failed get_url " + e);
+			currentDict.put(string, 1);
+
 			
 			return;
 		} catch (IOException e) {
 			System.out.println("failed get_url " + e);
+			currentDict.put(string, 1);
+
 			return;
 		}
 		if (markup == null) {
 			System.out.println("empty load for " + string);	
+			currentDict.put(string, 1);
+
 			return;
 		}
 
-		
+		if (level < 0)
+			return;
 
 		List<String> list_of_strings = parse_links(markup);
 		int len = list_of_strings.size();
+		
+
 		if (len == 0) {
-			//System.out.println("up");
 			return;
 		}
 		
 
 		
-		if (level < 0)
-			return;
 		
 		
 		for (int i = 0; i < len; i++) {
 			String val = list_of_strings.get(i);
 			scan(level, val);
 		}
-		
+		//currentDict.put(string, 1);
+
 	}
 
 
@@ -278,20 +350,27 @@ public class Crawl {
 
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
+			
 			if (c == ':')
 				return false;
+			
 			if (c == '%')
 				return false;
+			
 			if (c == '#')
 				return false;
+
 			if (c == '/')
 				return false;
+			/*
 			if (c == ',')
 				return false;
+				*/
 			if (c == '(')
 				return false;
 			if (c == ')')
 				return false;
+				
 		}
 
 		char c = s.charAt(0);

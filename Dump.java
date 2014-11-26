@@ -61,28 +61,96 @@ public class Dump {
 
 		String content;
 		File file;
-		String path_to_cache = path + "cache/";
+		String path_to_cache = "/media/benoit/09d1f277-6968-4ef1-9018-453bdfde4ce2/cache/";
 
+		if (reload == false)
 		try {
 			String SubDir =  path_to_cache + name_to_dir(subject);
 			file = new File( SubDir  + "/" + subject + ".zip");
 			ZipFile reader = new ZipFile(file);
 			InputStream s = reader.getInputStream(reader.entries().nextElement());
 			byte[] chars = new byte[s.available()];
-			s.read(chars, 0, s.available());
+			int pos = 0;
+			
+			while (s.available() > 0) {
+				int cnt = s.read(chars, pos, s.available());
+				pos += cnt;
+			}
 			content = new String(chars);
 			if (!content.startsWith("<!DOCTYPE html>")) {
 				throw(new Exception());
 			}
-			//System.out.println("Found");
+			//System.out.println("Found+" + subject);
 			s.close();
 			reader.close();
 			return content;
 		} catch (Exception e) {
-			return "";
+			//System.out.println("fnf " + subject + " " + e.toString());
+		}
+		
+
+		StringBuilder buf = new StringBuilder();
+		try {
+			URL url = new URL("http://en.wikipedia.org/wiki/" + subject);
+
+			URLConnection con = url.openConnection();
+			if (con == null)
+				return null;
+			//con.setRequestProperty("Accept-Encoding", "gzip, deflate");
+
+			Pattern p = Pattern.compile("text/html;\\s+charset=([^\\s]+)\\s*");
+			Matcher m = p.matcher(con.getContentType());
+			String charset = m.matches() ? m.group(1) : "ISO-8859-1";
+			
+			
+			String encoding = con.getContentEncoding();
+			//System.out.println(encoding);
+			InputStream inStr = null;
+
+			// create the appropriate stream wrapper based on
+			// the encoding type
+			if (encoding != null && encoding.equalsIgnoreCase("gzip")) {
+			    inStr = new GZIPInputStream(con.getInputStream());
+			} else if (encoding != null && encoding.equalsIgnoreCase("deflate")) {
+			    inStr = new InflaterInputStream(con.getInputStream(),
+			      new Inflater(true));
+			} else {
+			    inStr = con.getInputStream();
+			}
+			
+			
+			Reader r = new InputStreamReader(con.getInputStream(), charset);
+			while (true) {
+				int ch = r.read();
+				if (ch < 0)
+					break;
+				buf.append((char) ch);
+			}
+			r.close();
+		
+		} catch (FileNotFoundException e) {
+			System.out.println("no url");
 		}
 
+		String str = buf.toString();
+		//System.out.println("write");
+		try {
+			String SubDir = path_to_cache + name_to_dir(subject);
+			System.out.println("new" + " " + SubDir  + "/" + subject + ".zip");
+			new File(SubDir).mkdir();
+			SubDir = path_to_cache + name_to_dir(subject);
+			ZipOutputStream out = new ZipOutputStream(new FileOutputStream(SubDir  + "/" + subject + ".zip"));
+
+			out.putNextEntry(new ZipEntry("subject"));
+			out.write(str.getBytes(Charset.forName("UTF-8")));
+			out.close();
+		} catch (FileNotFoundException e) {
+			System.out.println("bad filename");
+		}
+
+		return str;
 	}
+
 
 
 	public static void showFiles(File[] files) throws Exception {
@@ -152,10 +220,28 @@ public class Dump {
 		String findStr = "<a href=\"/wiki/";
 
 
+		
+				
+
 		int find_length = findStr.length();
 		int lastIndex = 0;
 		int length = markup.length();
-		while(lastIndex != -1) {
+
+		int max_length = markup.indexOf("id=\"External_links\"");
+		if (max_length > 0) {
+			if (max_length < length) {
+				//System.out.println("Trunc " + length + " " + max_length);
+				length = max_length;
+			}
+		}
+
+		int start = markup.indexOf("mw-content-text");
+		if (start > 0) {
+			lastIndex = start;
+			//System.out.println("Start " + start);
+		}
+		
+		while(lastIndex != -1 && lastIndex < length) {
 
 			lastIndex = markup.indexOf(findStr, lastIndex);
 			if( lastIndex != -1) {
@@ -203,19 +289,11 @@ public class Dump {
 
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
-			if (c == ':')
-				return false;
 			if (c == '%')
 				return false;
 			if (c == '#')
 				return false;
 			if (c == '/')
-				return false;
-			if (c == ',')
-				return false;
-			if (c == '(')
-				return false;
-			if (c == ')')
 				return false;
 		}
 

@@ -61,8 +61,6 @@ public class Digest {
 	public static int didx(String s)
 	{
 		int result = Collections.binarySearch(dictionary, s);
-		if (result < 0)
-			result = -1;
 
 		return result;
 	}
@@ -89,12 +87,10 @@ public class Digest {
 
 			int cnt = work_buffer.getInt();
 			map = new Vecs[cnt];
-			System.out.println(cnt);
 
 			for (int idx = 0; idx < cnt; idx++) {
 				map[idx] = new Vecs();
 				map[idx].readFromStream(work_buffer);
-				if (idx % 10000 == 0) System.out.print(".");
 			}
 
 			fin.close();
@@ -108,38 +104,18 @@ public class Digest {
 				}
 			}
 
-			ArrayList<String> dict1 = new ArrayList<String>();
-			ArrayList<Float> freq1  = new ArrayList<Float>(); 
-/*
-			for (int idx = 0; idx < cnt; idx++) {
-				if (map[idx].refCount > 5 && map[idx].refCount < 200 && map[idx].count() > 7 && map[idx].count() < 300) {
-					System.out.println(dictionary.get(idx) + " " + map[idx].count() + " " + map[idx].refCount + " " + frequency.get(idx));
-					dict1.add(dictionary.get(idx));
-					freq1.add(frequency.get(idx));
-				}
-			}
-*/
-			for (int idx = 0; idx < cnt; idx++) {
-				System.out.print(dictionary.get(idx) + " " + map[idx].count() + " " + map[idx].refCount + " " + frequency.get(idx) + " ");
-					for (int j = 0; j < map[idx].count();j++) {
-						int	subref;
-						
-						subref = map[idx].array[j];
-						if (map[subref].contains(idx)) {
-							System.out.print(dictionary.get(subref)  + "[" + map[subref].refCount + "]" + "[" + frequency.get(subref) + "]"+ ",");
-						}
-					}
-					System.out.println(" ");
-			}
+			int idx = didx(args[0]);
+			if (idx < 0) idx = -idx;
+			//System.out.println(args + " " + idx);
+			//System.out.print("@"+dictionary.get(idx) + " " + map[idx].count() + " " + map[idx].refCount + " " + frequency.get(idx) + " ");
+			for (int j = 0; j < map[idx].count();j++) {
+				int	subref;
 
-/*			
-			FileOutputStream fout = new FileOutputStream(path + "dictionary.ser");
-			ObjectOutputStream iout = new ObjectOutputStream(fout); 
-			iout.writeObject(dict1);
-			iout.writeObject(freq1);
-			fout.close();
-			iout.close();
-	*/		
+				subref = map[idx].array[j];
+				//if (map[subref].contains(idx)) {
+				System.out.println(String.format("%05d", frequency.get(subref)) + " " + dictionary.get(subref)  + "  [" + map[subref].refCount + "]" + "[" + frequency.get(subref) + "]"+ ",");
+				//}
+			}
 		}
 
 	}

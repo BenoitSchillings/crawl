@@ -52,7 +52,7 @@ public class DigestReciprocal {
 	static int  known = 0;
 	static ObjectInputStream input;
 	static ArrayList<String> dictionary = new ArrayList<String>();
-	static ArrayList<Float> frequency = null; 
+	static ArrayList<Short> frequency = null; 
 
 	static String path = "/media/benoit/09d1f277-6968-4ef1-9018-453bdfde4ce2/";
 
@@ -72,7 +72,7 @@ public class DigestReciprocal {
 			FileInputStream fin = new FileInputStream(path + "dictionary.ser");
 			ObjectInputStream ios = new ObjectInputStream(fin); 
 			dictionary = (ArrayList<String>) ios.readObject();
-			frequency = (ArrayList<Float>) ios.readObject();
+			frequency = (ArrayList<Short>) ios.readObject();
 			fin.close();
 			ios.close();
 		}
@@ -81,10 +81,10 @@ public class DigestReciprocal {
 			FileInputStream fin = new FileInputStream(path + "map.bin");
 			DataInputStream in = new DataInputStream(fin);
 
-			ByteBuffer work_buffer = ByteBuffer.allocate(1000000000);
+			ByteBuffer work_buffer = ByteBuffer.allocate(2040000000);
 
 
-			in.read(work_buffer.array(), 0, 700000000);
+			in.read(work_buffer.array(), 0, 2040000000);
 
 
 			int cnt = work_buffer.getInt();
@@ -109,7 +109,7 @@ public class DigestReciprocal {
 			}
 
 			ArrayList<String> dict1 = new ArrayList<String>();
-			ArrayList<Float> freq1  = new ArrayList<Float>(); 
+			ArrayList<Short> freq1  = new ArrayList<Short>(); 
 
 			for (int idx = 0; idx < cnt; idx++) {
 					boolean found = false;
@@ -121,9 +121,13 @@ public class DigestReciprocal {
 							found = true;
 						}
 					}
-					if (found && frequency.get(idx) > 10) {
+					// if reciprocal and more than 3 citation
+					if (found && map[idx].refCount > 3) {
 						dict1.add(dictionary.get(idx));
 						freq1.add(frequency.get(idx));
+					}
+					else {
+						System.out.println("remove because no reciprocal " + dictionary.get(idx));
 					}
 			}
 
