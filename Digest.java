@@ -52,7 +52,7 @@ public class Digest {
 	static int  known = 0;
 	static ObjectInputStream input;
 	static ArrayList<String> dictionary = new ArrayList<String>();
-	static ArrayList<Float> frequency = null; 
+	static ArrayList<Integer> frequency = null; 
 
 	static String path = "/media/benoit/09d1f277-6968-4ef1-9018-453bdfde4ce2/";
 
@@ -60,7 +60,7 @@ public class Digest {
 
 	public static int didx(String s)
 	{
-		int result = Collections.binarySearch(dictionary, s);
+		int result = Collections.binarySearch(dictionary, s.toUpperCase());
 
 		return result;
 	}
@@ -70,7 +70,7 @@ public class Digest {
 			FileInputStream fin = new FileInputStream(path + "dictionary.ser");
 			ObjectInputStream ios = new ObjectInputStream(fin); 
 			dictionary = (ArrayList<String>) ios.readObject();
-			frequency = (ArrayList<Float>) ios.readObject();
+			frequency = (ArrayList<Integer>) ios.readObject();
 			fin.close();
 			ios.close();
 		}

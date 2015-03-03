@@ -98,7 +98,6 @@ public class Crawl {
 			if (!content.startsWith("<!DOCTYPE html>")) {
 				throw(new Exception());
 			}
-			//System.out.println("Found+" + subject);
 			s.close();
 			reader.close();
 			return content;
@@ -189,7 +188,7 @@ public class Crawl {
 		     public void run() {
 		          try {
 		        	Random randomGenerator = new Random();
-					scan(level - randomGenerator.nextInt(11), str);
+					scan(level, str);
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -201,26 +200,12 @@ public class Crawl {
 	}
 
 	private static void loop_scanner(int max_depth) throws Exception {
-		dox(15, "David_Filo");
-		dox(15, "Yahoo");
-		dox(15, "Belgium");
-		dox(15, "Telescope");
-		dox(15, "Tree");
-		dox(15, "Number");
-		dox(15, "Element");
-		dox(15, "Physics");
-		dox(15, "Ocean");
-		dox(15, "Moon");
-		dox(15, "Diagnostic");
-		dox(15, "Car");
-		dox(15, "Wood");
-		dox(15, "Big");
-		dox(15, "Nixon");
-		dox(15, "Base");
-		dox(15, "Rocket");
-		dox(15, "Metal");
-		dox(15, "Asia");
-		scan(22, "Rectangle");
+		dox(22, "Special:RecentChanges");
+		dox(22, "Copper");
+		dox(22, "Mouse");
+		dox(22, "Rome");
+		dox(22, "Antenna");
+		scan(24, "Astronomy");
 	}
 
 
@@ -346,13 +331,33 @@ public class Crawl {
 			return false;
 		if (s.length() > 150)
 			return false;
+		
+		if (s.contains("Wikipedia"))
+			return false;
+		if (s.contains("User:"))
+			return false;
+		if (s.contains("alk:"))
+			return false;
+		if (s.contains("Portal:"))
+			return false;
+		if (s.contains("CAT:"))
+			return false;
+		if (s.contains("Book:"))
+			return false;
+		
+		if (s.contains("File:"))
+			return false;
+		if (s.contains("Template:"))
+			return false;
+		if (s.contains("Help:"))
+			return false;
 
 
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
 			
-			if (c == ':')
-				return false;
+			//if (c == ':')
+				//return false;
 			
 			if (c == '%')
 				return false;

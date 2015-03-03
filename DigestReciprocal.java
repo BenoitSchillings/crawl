@@ -60,7 +60,7 @@ public class DigestReciprocal {
 
 	public static int didx(String s)
 	{
-		int result = Collections.binarySearch(dictionary, s);
+		int result = Collections.binarySearch(dictionary, s.toUpperCase());
 		if (result < 0)
 			result = -1;
 
@@ -121,6 +121,22 @@ public class DigestReciprocal {
 							found = true;
 						}
 					}
+					
+					if (dictionary.get(idx).length()>80) {
+						found = false;
+						System.out.println("remove for length " + dictionary.get(idx));
+					}
+					if (dictionary.get(idx).contains(":")) {
+						found = false;
+						System.out.println("remove for name " + dictionary.get(idx));
+					}
+					
+					if (frequency.get(idx) > 800) {
+						found = true;
+						System.out.println("Force true " + dictionary.get(idx) + " " + frequency.get(idx));
+					}
+					
+					
 					// if reciprocal and more than 3 citation
 					if (found && map[idx].refCount > 3) {
 						dict1.add(dictionary.get(idx));
@@ -131,6 +147,7 @@ public class DigestReciprocal {
 					}
 			}
 
+			// write back the culled dictionary.
 			
 			FileOutputStream fout = new FileOutputStream(path + "dictionary.ser");
 			ObjectOutputStream iout = new ObjectOutputStream(fout); 
@@ -139,9 +156,26 @@ public class DigestReciprocal {
 			fout.close();
 			iout.close();
 			
+			writeToText(dict1, freq1);
+			
+			//ExportBase();
+			
 		}
 
 	}
+
+	private static void writeToText(ArrayList<String> a_dict, ArrayList<Short> a_freq) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(path + "dict.txt"));
+		writer.write(a_dict.size() + "\n");
+		
+		for (int i = 0; i < a_dict.size(); i++) {
+			writer.write(a_dict.get(i) + "\n");
+			writer.write(a_freq.get(i) + "\n");
+		}
+		writer.close();
+	}
+
+
 
 }
 
