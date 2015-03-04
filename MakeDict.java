@@ -79,6 +79,7 @@ public class MakeDict {
 			ObjectInputStream ios = new ObjectInputStream(fin); 
 			dictionary = (ArrayList<String>) ios.readObject();
 			frequency = (ArrayList<Short>) ios.readObject();
+			System.out.println("Got existing dictionary.ser");
 			fin.close();
 			ios.close();
 		}
@@ -150,16 +151,16 @@ public class MakeDict {
 		do {
 			line = br.readLine();
 			if (line != null) {
-				int start = line.indexOf(":en");
+				int start = line.indexOf("en ");
 				int space1 = line.indexOf(" ", start + 4);
 				int	space2 = line.indexOf(" ", space1 + 1);
 
-				if (start >= 0 && space1 >= 0 && space2 >= 0) {
-					String	name  = line.substring(start + 4, space1);
+				if (start == 0 && space1 >= 0 && space2 >= 0) {
+					String	name  = line.substring(start + 3, space1);
 					int	count;
-
+					//System.out.println(line);
+					
 					count = Integer.parseInt(line.substring(space1 + 1, space2));
-
 					int idx = didx(name);
 					if (idx >= 0) {
 						count = count + frequency.get(idx);
@@ -247,9 +248,15 @@ public class MakeDict {
 		writer.write(a_map.length + "\n");
 
 		for (int i = 0; i < a_map.length; i++) {
-			writer.write(a_map[i].count() + "\t");
-			for (int j = 0; j < a_map[i].count(); j++) {
-				writer.write("\t" + a_map[i].list.get(j));
+			if (map[i] == null) {
+				writer.write(0 + "\t");
+			}
+			else {
+				Collections.sort(a_map[i].list);
+				writer.write(a_map[i].count() + "\t");
+				for (int j = 0; j < a_map[i].count(); j++) {
+					writer.write("\t" + a_map[i].list.get(j));
+				}
 			}
 			writer.write("\n");
 		}
@@ -315,10 +322,10 @@ public class MakeDict {
 			if (freq1.get(i) > MIN_FREQ) {
 				frequency.add(freq1.get(i));
 				dictionary.add(dict1.get(i));
-				//System.out.println(dict1.get(i) + " " + freq1.get(i));
+				System.out.println(dict1.get(i) + " " + freq1.get(i));
 			}
 			else {
-				//System.out.println("remove because of frequency " + dict1.get(i));
+				//System.out.println("remove because of frequency " + dict1.get(i) + " " + freq1.get(i));
 			}
 
 			i++;
